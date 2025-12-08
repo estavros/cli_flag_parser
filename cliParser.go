@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 type CLIParser struct {
@@ -16,24 +17,43 @@ func NewCLIParser(args []string) *CLIParser {
 }
 
 func (c *CLIParser) parse(args []string) {
-	for i := 0; i < len(args); i++ 
+	for i := 0; i < len(args); i++ {
 		arg := args[i]
 
-		if len(arg) > 2 && arg[:2] == "--" { // long flag --verbose
+		// --- NEW FEATURE: support --flag=value or -f=value ---
+		if strings.Contains(arg, "=") {
+			parts := strings.SplitN(arg, "=", 2)
+			flag := parts[0]
+			value := parts[1]
+
+			if strings.HasPrefix(flag, "--") {
+				c.flags[flag[2:]] = value
+			} else if strings.HasPrefix(flag, "-") {
+				c.flags[flag[1:]] = value
+			}
+			continue
+		}
+
+		// Long flag: --verbose
+		if len(arg) > 2 && arg[:2] == "--" {
 			key := arg[2:]
 			if i+1 < len(args) && args[i+1][0] != '-' {
 				c.flags[key] = args[i+1]
-				i++ // skip next argument since it is value
+				i++
 			} else {
-				c.flags[key] = "true" // boolean flag
+				c.flags[key] = "true"
 			}
-		} else if len(arg) > 1 && arg[0] == '-' { // short flag -v
+			continue
+		}
+
+		// Short flag: -v
+		if len(arg) > 1 && arg[0] == '-' {
 			key := arg[1:]
 			if i+1 < len(args) && args[i+1][0] != '-' {
 				c.flags[key] = args[i+1]
 				i++
 			} else {
-				c.flags[key] = "true" // boolean flag
+				c.flags[key] = "true"
 			}
 		}
 	}
