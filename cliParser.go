@@ -20,7 +20,7 @@ func (c *CLIParser) parse(args []string) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 
-		// --- NEW FEATURE: support --flag=value or -f=value ---
+		// Support --flag=value or -f=value
 		if strings.Contains(arg, "=") {
 			parts := strings.SplitN(arg, "=", 2)
 			flag := parts[0]
@@ -59,19 +59,31 @@ func (c *CLIParser) parse(args []string) {
 	}
 }
 
+// Checks if a flag exists
 func (c *CLIParser) HasFlag(flag string) bool {
 	_, exists := c.flags[flag]
 	return exists
 }
 
+// Returns the string value of a flag
 func (c *CLIParser) GetFlagValue(flag string) string {
 	return c.flags[flag]
+}
+
+// New: returns the boolean value of a flag
+func (c *CLIParser) GetBoolFlag(flag string) bool {
+	val, exists := c.flags[flag]
+	if !exists {
+		return false
+	}
+	val = strings.ToLower(val)
+	return val == "true" || val == "1"
 }
 
 func main() {
 	parser := NewCLIParser(os.Args[1:]) // skip program name
 
-	if parser.HasFlag("verbose") || parser.HasFlag("v") {
+	if parser.GetBoolFlag("verbose") || parser.GetBoolFlag("v") {
 		fmt.Println("Verbose mode is ON")
 	}
 
@@ -81,5 +93,12 @@ func main() {
 
 	if parser.HasFlag("n") {
 		fmt.Println("Number:", parser.GetFlagValue("n"))
+	}
+
+	// Example: boolean flag explicitly set to false
+	if parser.GetBoolFlag("debug") {
+		fmt.Println("Debug mode is ON")
+	} else {
+		fmt.Println("Debug mode is OFF")
 	}
 }
