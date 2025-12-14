@@ -7,11 +7,15 @@ import (
 )
 
 type CLIParser struct {
-	flags map[string]string
+	flags    map[string]string
+	defaults map[string]string
 }
 
 func NewCLIParser(args []string) *CLIParser {
-	parser := &CLIParser{flags: make(map[string]string)}
+	parser := &CLIParser{
+		flags:    make(map[string]string),
+		defaults: make(map[string]string),
+	}
 	parser.parse(args)
 	return parser
 }
@@ -35,7 +39,7 @@ func (c *CLIParser) parse(args []string) {
 		}
 
 		// Long flag: --verbose
-		if len(arg) > 2 && arg[:2] == "--" {
+		if len(arg) > 2 && strings.HasPrefix(arg, "--") {
 			key := arg[2:]
 			if i+1 < len(args) && args[i+1][0] != '-' {
 				c.flags[key] = args[i+1]
@@ -59,18 +63,31 @@ func (c *CLIParser) parse(args []string) {
 	}
 }
 
-// Checks if a flag exists
+// ----------------------
+// Default values support
+// ----------------------
+
+func (c *CLIParser) SetDefault(flag, value string) {
+	c.defaults[flag] = value
+
+	if _, exists := c.flags[flag]; !exists {
+		c.flags[flag] = value
+	}
+}
+
+// ----------------------
+// Flag accessors
+// ----------------------
+
 func (c *CLIParser) HasFlag(flag string) bool {
 	_, exists := c.flags[flag]
 	return exists
 }
 
-// Returns the string value of a flag
 func (c *CLIParser) GetFlagValue(flag string) string {
 	return c.flags[flag]
 }
 
-// New: returns the boolean value of a flag
 func (c *CLIParser) GetBoolFlag(flag string) bool {
 	val, exists := c.flags[flag]
 	if !exists {
@@ -80,8 +97,18 @@ func (c *CLIParser) GetBoolFlag(flag string) bool {
 	return val == "true" || val == "1"
 }
 
+// ----------------------
+// Example usage
+// ----------------------
+
 func main() {
 	parser := NewCLIParser(os.Args[1:]) // skip program name
+
+	// Set default values
+	parser.SetDefault("verbose", "false")
+	parser.SetDefault("debug", "false")
+	parser.SetDefault("file", "input.txt")
+	parser.SetDefault("n", "10")
 
 	if parser.GetBoolFlag("verbose") || parser.GetBoolFlag("v") {
 		fmt.Println("Verbose mode is ON")
@@ -95,7 +122,6 @@ func main() {
 		fmt.Println("Number:", parser.GetFlagValue("n"))
 	}
 
-	// Example: boolean flag explicitly set to false
 	if parser.GetBoolFlag("debug") {
 		fmt.Println("Debug mode is ON")
 	} else {
