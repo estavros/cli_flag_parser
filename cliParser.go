@@ -9,16 +9,37 @@ import (
 type CLIParser struct {
 	flags    map[string]string
 	defaults map[string]string
+	aliases  map[string]string
 }
 
 func NewCLIParser(args []string) *CLIParser {
 	parser := &CLIParser{
 		flags:    make(map[string]string),
 		defaults: make(map[string]string),
+		aliases:  make(map[string]string),
 	}
 	parser.parse(args)
 	return parser
 }
+
+// ----------------------
+// Alias support
+// ----------------------
+
+func (c *CLIParser) SetAlias(alias, flag string) {
+	c.aliases[alias] = flag
+}
+
+func (c *CLIParser) normalize(flag string) string {
+	if canonical, exists := c.aliases[flag]; exists {
+		return canonical
+	}
+	return flag
+}
+
+// ----------------------
+// Argument parsing
+// ----------------------
 
 func (c *CLIParser) parse(args []string) {
 	for i := 0; i < len(args); i++ {
@@ -31,16 +52,18 @@ func (c *CLIParser) parse(args []string) {
 			value := parts[1]
 
 			if strings.HasPrefix(flag, "--") {
-				c.flags[flag[2:]] = value
+				key := c.normalize(flag[2:])
+				c.flags[key] = value
 			} else if strings.HasPrefix(flag, "-") {
-				c.flags[flag[1:]] = value
+				key := c.normalize(flag[1:])
+				c.flags[key] = value
 			}
 			continue
 		}
 
 		// Long flag: --verbose
 		if len(arg) > 2 && strings.HasPrefix(arg, "--") {
-			key := arg[2:]
+			key := c.normalize(arg[2:])
 			if i+1 < len(args) && args[i+1][0] != '-' {
 				c.flags[key] = args[i+1]
 				i++
@@ -52,7 +75,7 @@ func (c *CLIParser) parse(args []string) {
 
 		// Short flag: -v
 		if len(arg) > 1 && arg[0] == '-' {
-			key := arg[1:]
+			key := c.normalize(arg[1:])
 			if i+1 < len(args) && args[i+1][0] != '-' {
 				c.flags[key] = args[i+1]
 				i++
@@ -68,6 +91,7 @@ func (c *CLIParser) parse(args []string) {
 // ----------------------
 
 func (c *CLIParser) SetDefault(flag, value string) {
+	flag = c.normalize(flag)
 	c.defaults[flag] = value
 
 	if _, exists := c.flags[flag]; !exists {
@@ -80,15 +104,18 @@ func (c *CLIParser) SetDefault(flag, value string) {
 // ----------------------
 
 func (c *CLIParser) HasFlag(flag string) bool {
+	flag = c.normalize(flag)
 	_, exists := c.flags[flag]
 	return exists
 }
 
 func (c *CLIParser) GetFlagValue(flag string) string {
+	flag = c.normalize(flag)
 	return c.flags[flag]
 }
 
 func (c *CLIParser) GetBoolFlag(flag string) bool {
+	flag = c.normalize(flag)
 	val, exists := c.flags[flag]
 	if !exists {
 		return false
@@ -102,20 +129,25 @@ func (c *CLIParser) GetBoolFlag(flag string) bool {
 // ----------------------
 
 func main() {
-	parser := NewCLIParser(os.Args[1:]) // skip program name
+	parser := NewCLIParser(os.Args[1:])
 
-	// Set default values
+	// Aliases
+	parser.SetAlias("v", "verbose")
+	parser.SetAlias("f", "file")
+	parser.SetAlias("d", "debug")
+
+	// Defaults
 	parser.SetDefault("verbose", "false")
 	parser.SetDefault("debug", "false")
 	parser.SetDefault("file", "input.txt")
 	parser.SetDefault("n", "10")
 
-	if parser.GetBoolFlag("verbose") || parser.GetBoolFlag("v") {
+	if parser.GetBoolFlag("v") {
 		fmt.Println("Verbose mode is ON")
 	}
 
-	if parser.HasFlag("file") || parser.HasFlag("f") {
-		fmt.Println("File:", parser.GetFlagValue("file"))
+	if parser.HasFlag("file") {
+		fmt.Println("File:", parser.GetFlagValue("f"))
 	}
 
 	if parser.HasFlag("n") {
