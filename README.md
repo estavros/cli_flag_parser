@@ -4,12 +4,27 @@ A lightweight command-line argument parser written in Go.
 
 Supports:
 
-* Long flags (`--verbose`)
-* Short flags (`-v`)
-* Flags with values (`--file test.txt`, `-f test.txt`)
-* Flags using the `--flag=value` or `-f=value` syntax
-* Boolean flags (no value → `"true"`)
+- Long flags: `--verbose`
+- Short flags: `-v`
+- Short-flag bundling: `-abc` → `-a -b -c`
+- Flags with values:
+  - `--file=input.txt`
+  - `-f input.txt`
+- Boolean flags (implicit `true`)
+- Flag aliases (`-v` → `--verbose`)
+- Default values
+- Simple string and boolean accessors
 
+## Example
+
+```bash
+./app -vd -f data.txt -n 5
+
+Equivalent to:
+
+./app --verbose --debug --file=data.txt --n=5
+
+```
 ## Features
 
 ### ✔ Long flags
