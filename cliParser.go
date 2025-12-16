@@ -62,7 +62,7 @@ func (c *CLIParser) parse(args []string) {
 		}
 
 		// Long flag: --verbose
-		if len(arg) > 2 && strings.HasPrefix(arg, "--") {
+		if strings.HasPrefix(arg, "--") && len(arg) > 2 {
 			key := c.normalize(arg[2:])
 			if i+1 < len(args) && args[i+1][0] != '-' {
 				c.flags[key] = args[i+1]
@@ -73,13 +73,25 @@ func (c *CLIParser) parse(args []string) {
 			continue
 		}
 
-		// Short flag: -v
-		if len(arg) > 1 && arg[0] == '-' {
-			key := c.normalize(arg[1:])
-			if i+1 < len(args) && args[i+1][0] != '-' {
-				c.flags[key] = args[i+1]
-				i++
-			} else {
+		// Short flags (supports bundling): -abc or -n 10
+		if strings.HasPrefix(arg, "-") && len(arg) > 1 {
+			shorts := arg[1:]
+
+			// Single short flag may take a value
+			if len(shorts) == 1 {
+				key := c.normalize(shorts)
+				if i+1 < len(args) && args[i+1][0] != '-' {
+					c.flags[key] = args[i+1]
+					i++
+				} else {
+					c.flags[key] = "true"
+				}
+				continue
+			}
+
+			// Bundled short flags: -abc → -a -b -c (all boolean)
+			for _, ch := range shorts {
+				key := c.normalize(string(ch))
 				c.flags[key] = "true"
 			}
 		}
