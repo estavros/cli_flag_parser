@@ -7,16 +7,18 @@ import (
 )
 
 type CLIParser struct {
-	flags    map[string]string
-	defaults map[string]string
-	aliases  map[string]string
+	flags       map[string]string
+	defaults    map[string]string
+	aliases     map[string]string
+	positionals []string
 }
 
 func NewCLIParser(args []string) *CLIParser {
 	parser := &CLIParser{
-		flags:    make(map[string]string),
-		defaults: make(map[string]string),
-		aliases:  make(map[string]string),
+		flags:       make(map[string]string),
+		defaults:    make(map[string]string),
+		aliases:     make(map[string]string),
+		positionals: []string{},
 	}
 	parser.parse(args)
 	return parser
@@ -57,6 +59,8 @@ func (c *CLIParser) parse(args []string) {
 			} else if strings.HasPrefix(flag, "-") {
 				key := c.normalize(flag[1:])
 				c.flags[key] = value
+			} else {
+				c.positionals = append(c.positionals, arg)
 			}
 			continue
 		}
@@ -64,7 +68,7 @@ func (c *CLIParser) parse(args []string) {
 		// Long flag: --verbose
 		if strings.HasPrefix(arg, "--") && len(arg) > 2 {
 			key := c.normalize(arg[2:])
-			if i+1 < len(args) && args[i+1][0] != '-' {
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 				c.flags[key] = args[i+1]
 				i++
 			} else {
@@ -80,7 +84,7 @@ func (c *CLIParser) parse(args []string) {
 			// Single short flag may take a value
 			if len(shorts) == 1 {
 				key := c.normalize(shorts)
-				if i+1 < len(args) && args[i+1][0] != '-' {
+				if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 					c.flags[key] = args[i+1]
 					i++
 				} else {
@@ -89,12 +93,16 @@ func (c *CLIParser) parse(args []string) {
 				continue
 			}
 
-			// Bundled short flags: -abc → -a -b -c (all boolean)
+			// Bundled short flags: -abc → -a -b -c
 			for _, ch := range shorts {
 				key := c.normalize(string(ch))
 				c.flags[key] = "true"
 			}
+			continue
 		}
+
+		// If it wasn't a flag, it's positional
+		c.positionals = append(c.positionals, arg)
 	}
 }
 
@@ -133,7 +141,26 @@ func (c *CLIParser) GetBoolFlag(flag string) bool {
 		return false
 	}
 	val = strings.ToLower(val)
-	return val == "true" || val == "1"
+	return val == "true" || val == "1" || val == "yes" || val == "on"
+}
+
+// ----------------------
+// Positional arguments
+// ----------------------
+
+func (c *CLIParser) Positionals() []string {
+	return c.positionals
+}
+
+func (c *CLIParser) Positional(i int) string {
+	if i < 0 || i >= len(c.positionals) {
+		return ""
+	}
+	return c.positionals[i]
+}
+
+func (c *CLIParser) PositionalCount() int {
+	return len(c.positionals)
 }
 
 // ----------------------
@@ -158,17 +185,20 @@ func main() {
 		fmt.Println("Verbose mode is ON")
 	}
 
-	if parser.HasFlag("file") {
-		fmt.Println("File:", parser.GetFlagValue("f"))
-	}
-
-	if parser.HasFlag("n") {
-		fmt.Println("Number:", parser.GetFlagValue("n"))
-	}
+	fmt.Println("File:", parser.GetFlagValue("f"))
+	fmt.Println("Number:", parser.GetFlagValue("n"))
 
 	if parser.GetBoolFlag("debug") {
 		fmt.Println("Debug mode is ON")
 	} else {
 		fmt.Println("Debug mode is OFF")
+	}
+
+	// Positional arguments
+	if parser.PositionalCount() > 0 {
+		fmt.Println("Positional arguments:")
+		for i, arg := range parser.Positionals() {
+			fmt.Printf("  [%d] %s\n", i, arg)
+		}
 	}
 }
