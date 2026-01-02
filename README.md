@@ -14,6 +14,7 @@ Supports:
 - Flag aliases (`-v` → `--verbose`)
 - Default values
 - Simple string and boolean accessors
+- Positional (non-flag) arguments
 
 ## Example
 
@@ -56,6 +57,14 @@ If a flag is provided without a value, the parser sets it to `"true"`:
 ```bash
 --verbose
 -v
+```
+
+### ✔ Positional arguments
+
+Any argument that is not a flag is treated as a positional argument.
+
+```bash
+./app build src/main.go out.bin --verbose
 ```
 
 ## Usage
